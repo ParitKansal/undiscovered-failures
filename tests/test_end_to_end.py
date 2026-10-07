@@ -14,7 +14,8 @@ with tempfile.TemporaryDirectory() as d:
                      "--repeats", "3", "--out", out, "--jobs", "2",
                      "--flips", "0.6,0.9", "--k_planted", "10,20", "--boot", "30"])
     df = pd.read_csv(out)
-    assert set(df.types) >= {"planted", "kmeans10"}, df.types.unique()
+    assert set(df.types) >= {"planted", "kmeans10", "natural_grid25", "natural_grid100", "natural_kmeans25"}, df.types.unique()
+    assert ((df.unseen_lo <= df.unseen_est + 1e-9) & (df.unseen_est <= df.unseen_hi + 1e-9)).all(), "unseen interval"
     assert (df.s_obs <= df.true_types).all(), "cannot observe more types than exist"
     assert (df.chao1 >= df.s_obs - 1e-9).all() and (df.ichao1 >= df.chao1 - 1e-9).all(), "estimator ordering"
     assert (df.chao1_lo <= df.chao1 + 1e-9).all() and (df.chao1 <= df.chao1_hi + 1e-9).all(), "interval"
@@ -25,4 +26,6 @@ with tempfile.TemporaryDirectory() as d:
     for e in ("chao1", "ace", "jackknife1"):
         assert (df[f"{e}_blo"] >= df.s_obs - 1e-9).all() and (df[f"{e}_blo"] <= df[f"{e}_bhi"] + 1e-9).all(), e
     summarize.summarize(out)
+    import analyze_main
+    analyze_main.main(out)
 print("END-TO-END TEST PASSED")

@@ -180,3 +180,32 @@ def pivot_ci(counts, fn, B=200, seed=0, alpha=0.05):
         return float(est), float(s), float(est)
     lo, mid, hi = np.quantile(r, [alpha / 2, 0.5, 1 - alpha / 2])
     return float(max(s, est * mid)), float(max(s, est * lo)), float(max(s, est * hi))
+
+
+def unseen_ci(counts, B=200, seed=0, alpha=0.05):
+    """Calibrated 95% interval for the unseen share (the share of all errors whose type was not seen).
+    In the bootstrap world (as in boot_ci) the true unseen share of each resample is KNOWN: the total
+    probability of the types the resample missed. So we record the estimation error (estimate - truth)
+    over B resamples and return estimate - [97.5%, 2.5%] quantiles of that error, clipped to [0, 1]."""
+    import numpy as np
+    n, s, _ = basics(counts)
+    est = 1 - coverage(counts)
+    if n < 2:
+        return est, est
+    c = 1 - est
+    f0 = int(round(chao1(counts) - s))
+    x = np.array([v for v in counts if v > 0], dtype=float)
+    p = c * x / n
+    if f0 > 0 and c < 1:
+        p = np.concatenate([p, np.full(f0, (1 - c) / f0)])
+    if p.sum() <= 0:
+        return est, est
+    p = p / p.sum()
+    rng = np.random.default_rng(seed)
+    err = []
+    for _ in range(B):
+        draw = rng.multinomial(n, p)
+        truth = float(p[draw == 0].sum())
+        err.append((1 - coverage(draw.tolist())) - truth)
+    lo_e, hi_e = np.quantile(err, [alpha / 2, 1 - alpha / 2])
+    return float(min(1, max(0, est - hi_e))), float(min(1, max(0, est - lo_e)))

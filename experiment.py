@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
 from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
 from sklearn.datasets import fetch_covtype, fetch_openml
 from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
@@ -39,7 +40,7 @@ def load(name, data_home=None):
         d = fetch_covtype(data_home=data_home)
         X, y = d.data, (d.target == 2).astype(int)  # most common class vs rest
     else:
-        ids = {"adult": 1590, "bank": 1461, "magic": 1120}  # magic: MAGIC gamma telescope, 19k rows
+        ids = {"adult": 1590, "bank": 1461, "magic": 1120, "electricity": 151}  # magic 19k rows, electricity 45k
         d = fetch_openml(data_id=ids[name], as_frame=True, data_home=data_home, parser="auto")
         X = pd.get_dummies(d.data, dummy_na=True).astype("float32").fillna(0).values
         y = (d.target == d.target.value_counts().index[1]).astype(int).values  # minority class = 1
@@ -78,7 +79,7 @@ MODELS = {
 
 
 def run_job(dataset, model, seed, k_planted=30, budgets=(300, 1000, 3000), repeats=30,
-            flip=0.9, cluster_ks=(10, 25, 50), data_home=None, boot=200):
+            flip=0.9, cluster_ks=(10, 25, 50), data_home=None, boot=200, natural=True):
     rng = np.random.default_rng(seed)
     X, y = load(dataset, data_home)
     if len(X) > 120000:  # keep jobs fast
@@ -104,6 +105,24 @@ def run_job(dataset, model, seed, k_planted=30, budgets=(300, 1000, 3000), repea
         if len(err_idx) >= kc:
             lab[err_idx] = KMeans(n_clusters=kc, n_init=3, random_state=seed).fit_predict(Xte[err_idx])
         types[f"kmeans{kc}"] = lab
+
+    # NATURAL failures: the same model trained on the clean labels; its errors are real, nothing is planted.
+    # Types are fixed before looking at any error: cells of a grid over the first two principal components
+    # of the training data (quantile bins), plus k-means on the natural errors.
+    if natural:
+        nat = MODELS[model](seed).fit(Xtr, ytr)
+        wrong_n = nat.predict(Xte) != yte
+        pca = PCA(n_components=2, random_state=seed).fit(Xtr)
+        ztr, zte = pca.transform(Xtr), pca.transform(Xte)
+        for g in (5, 10):
+            edges = [np.quantile(ztr[:, j], np.linspace(0, 1, g + 1)[1:-1]) for j in range(2)]
+            cell = np.digitize(zte[:, 0], edges[0]) * g + np.digitize(zte[:, 1], edges[1])
+            types[f"natural_grid{g * g}"] = np.where(wrong_n, cell, -1)
+        lab = np.full(len(Xte), -1)
+        e_n = np.where(wrong_n)[0]
+        if len(e_n) >= 25:
+            lab[e_n] = KMeans(n_clusters=25, n_init=3, random_state=seed).fit_predict(Xte[e_n])
+        types["natural_kmeans25"] = lab
 
     rows = []
     for tname, t in types.items():
@@ -137,6 +156,8 @@ def run_job(dataset, model, seed, k_planted=30, budgets=(300, 1000, 3000), repea
                 pool_types = t[t >= 0]
                 row["unseen_true"] = float(np.isin(pool_types, list(seen), invert=True).mean()) if len(pool_types) else 0.0
                 row["unseen_est"] = 1 - row["coverage"]
+                row["unseen_turing"] = row["f1"] / len(ta) if len(ta) else 0.0  # Turing's original f1/n
+                row["unseen_lo"], row["unseen_hi"] = E.unseen_ci(cl, B=boot, seed=r)
                 rows.append(row)
     return rows
 
@@ -149,6 +170,7 @@ def main(argv=None):
     ap.add_argument("--datasets", default="adult,bank,covertype")
     ap.add_argument("--models", default="logreg,forest,boosting")
     ap.add_argument("--seeds", type=int, default=5)
+    ap.add_argument("--seed_offset", type=int, default=0, help="first seed (the main study uses 100)")
     ap.add_argument("--repeats", type=int, default=30)
     ap.add_argument("--flips", default="0.9", help="share of training labels flipped inside planted groups")
     ap.add_argument("--k_planted", default="30", help="number of planted failure types")
@@ -161,7 +183,7 @@ def main(argv=None):
     for d in a.datasets.split(","):  # download once, before the parallel jobs
         load(d, a.data_home)
     jobs = [(d, m, s, float(f), int(k)) for d in a.datasets.split(",") for m in a.models.split(",")
-            for s in range(a.seeds) for f in a.flips.split(",") for k in a.k_planted.split(",")]
+            for s in range(a.seed_offset, a.seed_offset + a.seeds) for f in a.flips.split(",") for k in a.k_planted.split(",")]
     print(f"{len(jobs)} jobs on {os.cpu_count()} CPU cores")
     out = Parallel(n_jobs=a.jobs, verbose=5)(
         delayed(run_job)(d, m, s, k_planted=k, flip=f, repeats=a.repeats, data_home=a.data_home, boot=a.boot)

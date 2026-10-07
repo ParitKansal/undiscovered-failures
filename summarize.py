@@ -6,7 +6,9 @@
   rel_<e>_bc       bias of the bias-calibrated estimate (pivot_ci)
   cov_<e>_p        coverage of the bias-calibrated interval
   unseen_true      share of all errors that belong to types not seen in the test (the truth)
-  unseen_err       estimated minus true unseen share (estimate = 1 - sample coverage)
+  unseen_err       estimated minus true unseen share (estimate = 1 - sample coverage, Chao & Jost 2012)
+  unseen_err_tur   the same for Turing's original estimate f1 / n (baseline); a naive "nothing unseen" has error -unseen_true
+  cov_unseen       share of runs whose calibrated 95% interval for the unseen share contains the truth
   new_real         new types actually found by a second test set of the same size
   new_ratio        predicted / real new types, summed over runs (1 is perfect)
 """
@@ -31,6 +33,9 @@ def add_columns(df):
             df[f"rel_{name}"] = (df[col] - df.true_types) / df.true_types
     if "unseen_true" in df:
         df["unseen_err"] = df.unseen_est - df.unseen_true
+        if "unseen_turing" in df:
+            df["unseen_err_tur"] = df.unseen_turing - df.unseen_true
+            df["cov_unseen"] = (df.unseen_lo <= df.unseen_true + 1e-12) & (df.unseen_true <= df.unseen_hi + 1e-12)
     for name, (lo, hi) in CIS.items():
         if lo in df:
             df[f"cov_{name}"] = (df[lo] <= df.true_types) & (df.true_types <= df[hi])
@@ -41,7 +46,7 @@ def table(df, by):
     g = df.groupby(by)
     cols = ([f"rel_{e}" for e in EST] + [c for c in df.columns if c.startswith("rel_") and c.endswith("_bc")]
             + [c for c in df.columns if c.startswith("cov_")]
-            + [c for c in ("unseen_true", "unseen_err") if c in df.columns])
+            + [c for c in ("unseen_true", "unseen_err", "unseen_err_tur") if c in df.columns])
     t = g[cols].mean()
     t["new_real"] = g.new_real.mean()
     t["new_ratio"] = g.new_pred.sum() / g.new_real.sum().where(g.new_real.sum() > 0)
@@ -53,8 +58,8 @@ def summarize(path):
     df = add_columns(pd.read_csv(path))
     pd.set_option("display.width", 250)
     pd.set_option("display.max_columns", 30)
-    key = ["rel_s_obs", "rel_ace", "rel_jackknife1", "rel_ace_bc", "cov_ace_b", "cov_ace_p", "cov_jack_b",
-           "cov_jack_p", "unseen_true", "unseen_err", "new_ratio"]
+    key = ["rel_s_obs", "rel_ace", "rel_jackknife1", "rel_ace_bc", "cov_ace_p", "cov_jack_p",
+           "unseen_true", "unseen_err", "unseen_err_tur", "cov_unseen", "new_ratio"]
     k = table(df, ["types", "budget"])
     print("== Key numbers ==")
     print(k[[c for c in key if c in k.columns]].to_string())

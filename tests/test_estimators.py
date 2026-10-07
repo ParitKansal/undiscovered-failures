@@ -60,4 +60,19 @@ bc, plo, phi = pivot_ci(c, chao1, B=100, seed=2)
 check(9 - 1e-9 <= plo <= bc <= phi and bc >= chao1(c) - 1e-9, "pivot_ci ordering and upward correction")
 check(pivot_ci([3, 4, 5], ace, B=50)[1] == 3.0, "pivot_ci with nothing missing")
 
+# unseen-share interval: inside [0, 1], contains the point estimate; covers the truth in a known world
+from estimators import unseen_ci
+lo3, hi3 = unseen_ci(c, B=100, seed=3)
+check(0 <= lo3 <= 1 - coverage(c) <= hi3 <= 1, "unseen_ci ordering")
+import numpy as np
+rng2 = np.random.default_rng(5)
+pw = 0.95 ** np.arange(80); pw /= pw.sum()
+hits = 0
+for t in range(60):
+    d = rng2.multinomial(200, pw)
+    truth = float(pw[d == 0].sum())
+    lo4, hi4 = unseen_ci(d.tolist(), B=100, seed=t)
+    hits += lo4 <= truth <= hi4
+check(hits / 60 >= 0.8, f"unseen_ci covers the truth in a simulated world ({hits}/60)")
+
 print(f"ALL {ok} ESTIMATOR CHECKS PASSED")
