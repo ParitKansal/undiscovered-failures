@@ -45,4 +45,14 @@ for _ in range(300):
 m_obs, m_est = sum(s_obs) / 300, sum(est) / 300
 check(m_obs < m_est and abs(m_est - 40) < abs(m_obs - 40) and abs(m_est - 40) < 4, f"simulation ({m_obs:.1f}, {m_est:.1f})")
 
+# bootstrap interval: contains the estimate, never below S_obs, reproducible with the same seed
+from estimators import boot_ci
+c = [1, 1, 1, 1, 2, 2, 3, 5, 8]
+lo, hi = boot_ci(c, chao1, B=100, seed=1)
+check(lo >= 9 - 1e-9 and lo <= chao1(c) <= hi and boot_ci(c, chao1, B=100, seed=1) == (lo, hi), "boot_ci")
+lo2, hi2 = boot_ci([4, 5, 6], ace, B=50)
+check(lo2 == 3.0 and hi2 >= 3.0, "boot_ci with nothing missing: lower end is S_obs")
+
+check(boot_ci([1], chao1) == (1.0, 1.0) and boot_ci([], chao1) == (0.0, 0.0), "boot_ci with 0 or 1 error")
+
 print(f"ALL {ok} ESTIMATOR CHECKS PASSED")

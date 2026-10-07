@@ -6,13 +6,13 @@ This repository tests whether those estimators work for model failures. The diff
 
 The same checks run on a second definition of a failure type, where the model's real errors are grouped by k-means at 10, 25 and 50 clusters. That version shows how much the answer depends on how finely failures are grouped.
 
-**Status:** pilot code. Results are not in this repository yet.
+**Status:** exploratory pilot, not pre-registered. The first run (pilot v0) is recorded in `runs/`. Version 1 adds bootstrap intervals, a fourth dataset, two label-flip rates and three numbers of planted types.
 
 ## What is in the repository
 
 | File | What it does |
 |---|---|
-| `estimators.py` | Chao1 with its 95% interval, iChao1, ACE, first-order jackknife, sample coverage, and the prediction of new types |
+| `estimators.py` | Chao1 with its log-normal 95% interval, iChao1, ACE, first-order jackknife, sample coverage, the prediction of new types, and bootstrap 95% intervals for any estimator |
 | `experiment.py` | One job per dataset, model and seed: plant failures, train, find errors, simulate testing, write one CSV row per draw. Jobs run in parallel on all CPU cores. |
 | `summarize.py` | Tables of each estimator's bias, interval coverage and new-type prediction error |
 | `tests/` | Checks of the estimators against hand-computed values and a simulation, and an end-to-end run on a small synthetic dataset |
@@ -28,7 +28,7 @@ Locally, with Python 3.10 or newer:
 pip install -r requirements.txt
 python -m tests.test_estimators
 python -m tests.test_end_to_end
-python experiment.py --datasets adult,bank,covertype --models logreg,forest,boosting --seeds 5
+python experiment.py --datasets adult,bank,covertype,magic --models logreg,forest,boosting --seeds 3 --flips 0.6,0.9 --k_planted 15,30,60
 python summarize.py results/pilot.csv
 ```
 

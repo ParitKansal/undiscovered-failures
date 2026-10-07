@@ -111,3 +111,28 @@ def predict_new(counts, m):
 
 
 ESTIMATORS = {"chao1": chao1, "ichao1": ichao1, "ace": ace, "jackknife1": jackknife1}
+
+
+def boot_ci(counts, fn, B=200, seed=0, z=1.96):
+    """Bootstrap 95% interval for any estimator `fn` (the method used by iNEXT; Chao et al. 2014).
+    Builds a full "assemblage": each observed type keeps a share C * x_i / n (C = sample coverage), and
+    f0 = round(Chao1 - S_obs) unseen types share the remaining 1 - C equally. Draws B new samples of the
+    same size n from it, applies `fn` to each, and returns estimate +- z * bootstrap SD, never below S_obs."""
+    import numpy as np
+    n, s, _ = basics(counts)
+    est = fn(counts)
+    if n < 2:  # one error or none: no spread can be estimated
+        return float(s), float(est)
+    c = coverage(counts)
+    f0 = int(round(chao1(counts) - s))
+    x = np.array([v for v in counts if v > 0], dtype=float)
+    p = c * x / n
+    if f0 > 0 and c < 1:
+        p = np.concatenate([p, np.full(f0, (1 - c) / f0)])
+    if p.sum() <= 0:
+        return float(s), float(est)
+    p = p / p.sum()
+    rng = np.random.default_rng(seed)
+    sims = [fn(rng.multinomial(n, p).tolist()) for _ in range(B)]
+    sd = float(np.std(sims, ddof=1))
+    return max(float(s), est - z * sd), est + z * sd

@@ -39,7 +39,7 @@ def load(name, data_home=None):
         d = fetch_covtype(data_home=data_home)
         X, y = d.data, (d.target == 2).astype(int)  # most common class vs rest
     else:
-        ids = {"adult": 1590, "bank": 1461, "magic": 1120}
+        ids = {"adult": 1590, "bank": 1461, "magic": 1120}  # magic: MAGIC gamma telescope, 19k rows
         d = fetch_openml(data_id=ids[name], as_frame=True, data_home=data_home, parser="auto")
         X = pd.get_dummies(d.data, dummy_na=True).astype("float32").fillna(0).values
         y = (d.target == d.target.value_counts().index[1]).astype(int).values  # minority class = 1
@@ -78,7 +78,7 @@ MODELS = {
 
 
 def run_job(dataset, model, seed, k_planted=30, budgets=(300, 1000, 3000), repeats=30,
-            flip=0.9, cluster_ks=(10, 25, 50), data_home=None):
+            flip=0.9, cluster_ks=(10, 25, 50), data_home=None, boot=200):
     rng = np.random.default_rng(seed)
     X, y = load(dataset, data_home)
     if len(X) > 120000:  # keep jobs fast
@@ -119,14 +119,18 @@ def run_job(dataset, model, seed, k_planted=30, budgets=(300, 1000, 3000), repea
                 seen = set(ta.tolist())
                 tb = t[nxt][t[nxt] >= 0]
                 new_real = len(set(tb.tolist()) - seen)
-                row = dict(dataset=dataset, model=model, seed=seed, types=tname, budget=b, repeat=r,
+                row = dict(dataset=dataset, model=model, seed=seed, flip=flip, k_planted=k_planted,
+                           types=tname, budget=b, repeat=r,
                            true_types=true_types, n_errors=int(len(ta)), s_obs=len(seen),
                            f1=int((counts == 1).sum()), f2=int((counts == 2).sum()),
                            coverage=E.coverage(counts.tolist()),
                            new_pred=E.predict_new(counts.tolist(), len(tb)), new_real=new_real)
+                cl = counts.tolist()
                 for name, fn in E.ESTIMATORS.items():
-                    row[name] = fn(counts.tolist())
-                row["chao1_lo"], row["chao1_hi"] = E.chao1_ci(counts.tolist())
+                    row[name] = fn(cl)
+                row["chao1_lo"], row["chao1_hi"] = E.chao1_ci(cl)
+                for name in ("chao1", "ace", "jackknife1"):  # bootstrap intervals (iNEXT method)
+                    row[f"{name}_blo"], row[f"{name}_bhi"] = E.boot_ci(cl, E.ESTIMATORS[name], B=boot, seed=r)
                 rows.append(row)
     return rows
 
@@ -140,6 +144,9 @@ def main(argv=None):
     ap.add_argument("--models", default="logreg,forest,boosting")
     ap.add_argument("--seeds", type=int, default=5)
     ap.add_argument("--repeats", type=int, default=30)
+    ap.add_argument("--flips", default="0.9", help="share of training labels flipped inside planted groups")
+    ap.add_argument("--k_planted", default="30", help="number of planted failure types")
+    ap.add_argument("--boot", type=int, default=200, help="bootstrap draws per interval")
     ap.add_argument("--out", default="results/pilot.csv")
     ap.add_argument("--data_home", default=None)
     ap.add_argument("--jobs", type=int, default=-1, help="parallel jobs (-1 = all CPU cores)")
@@ -147,10 +154,12 @@ def main(argv=None):
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
     for d in a.datasets.split(","):  # download once, before the parallel jobs
         load(d, a.data_home)
-    jobs = [(d, m, s) for d in a.datasets.split(",") for m in a.models.split(",") for s in range(a.seeds)]
+    jobs = [(d, m, s, float(f), int(k)) for d in a.datasets.split(",") for m in a.models.split(",")
+            for s in range(a.seeds) for f in a.flips.split(",") for k in a.k_planted.split(",")]
     print(f"{len(jobs)} jobs on {os.cpu_count()} CPU cores")
     out = Parallel(n_jobs=a.jobs, verbose=5)(
-        delayed(run_job)(d, m, s, repeats=a.repeats, data_home=a.data_home) for d, m, s in jobs)
+        delayed(run_job)(d, m, s, k_planted=k, flip=f, repeats=a.repeats, data_home=a.data_home, boot=a.boot)
+        for d, m, s, f, k in jobs)
     df = pd.DataFrame([r for rows in out for r in rows])
     df.to_csv(a.out, index=False)
     print("wrote", a.out, len(df), "rows")
