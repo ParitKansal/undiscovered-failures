@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you build on this idea or code, please cite it as below."
+title: "How Many Failure Types Are Still Undiscovered? Species-Richness Estimators for Testing Machine-Learning Models"
+type: software
+authors:
+  - family-names: Kansal
+    given-names: Parit
+    website: "https://paritkansal.in"
+repository-code: "https://github.com/ParitKansal/undiscovered-failures"
+url: "https://github.com/ParitKansal/undiscovered-failures"
+date-released: 2026-10-07
+version: "0.1.0"
+license: MIT
+abstract: >-
+  Code for a pilot study that asks whether species-richness estimators from ecology (Chao1, iChao1, ACE,
+  jackknife) can estimate how many distinct failure types of a classical machine-learning model remain
+  undiscovered after testing. Failure types are planted in standard tabular datasets so the true number is
+  known, and the estimates are checked against that truth and against held-out test draws.
+keywords:
+  - machine learning testing
+  - failure modes
+  - species richness
+  - Chao1
+  - tabular data
