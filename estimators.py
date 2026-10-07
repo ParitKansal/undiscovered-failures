@@ -136,3 +136,47 @@ def boot_ci(counts, fn, B=200, seed=0, z=1.96):
     sims = [fn(rng.multinomial(n, p).tolist()) for _ in range(B)]
     sd = float(np.std(sims, ddof=1))
     return max(float(s), est - z * sd), est + z * sd
+
+
+def pivot_ci(counts, fn, B=200, seed=0, alpha=0.05):
+    """Bias-calibrated bootstrap for any estimator `fn`. Returns (corrected estimate, lower, upper).
+
+    In a bootstrap world the true number of types is KNOWN, so we can measure how far `fn` falls short there.
+    1. Build a world from the data: each observed type keeps a share C x_i / n (C = sample coverage), and m unseen
+       types share the remaining 1 - C equally. m is chosen so that the world reproduces the observed number of
+       singletons (exact expected value, no simulation). Its true number of types is S_obs + m.
+    2. Draw B samples of the same size n, apply `fn`, and record the ratio r = (S_obs + m) / estimate.
+    3. Corrected estimate = fn(counts) x median(r); interval = fn(counts) x the 2.5% and 97.5% quantiles of r.
+    The lower end is never below S_obs.
+    Caveat: with many very rare types the sample holds little information about them, and no interval can be
+    trusted; the pilot measures how often this one covers the truth."""
+    import numpy as np
+    n, s, f = basics(counts)
+    est = fn(counts)
+    if n < 2:
+        return float(est), float(s), float(est)
+    c = coverage(counts)
+    x = np.array([v for v in counts if v > 0], dtype=float)
+    pdet = c * x / n
+    f0 = int(round(max(est, chao1(counts)) - s))
+    m = 0
+    if c < 1 and f0 > 0:
+        best = None
+        for k in sorted({f0, *[int(f0 * t) for t in (1.25, 1.5, 2, 2.5, 3, 4, 6, 8, 10)]}):
+            if k < 1:
+                continue
+            q = (1 - c) / k
+            ef1 = float((n * pdet * (1 - pdet) ** (n - 1)).sum()) + k * n * q * (1 - q) ** (n - 1)
+            if best is None or abs(ef1 - f[1]) < best[0]:
+                best = (abs(ef1 - f[1]), k)
+        m = best[1]
+    p = np.concatenate([pdet, np.full(m, (1 - c) / m)]) if m else pdet
+    if p.sum() <= 0:
+        return float(est), float(s), float(est)
+    p = p / p.sum()
+    rng = np.random.default_rng(seed)
+    r = [(s + m) / e for e in (fn(rng.multinomial(n, p).tolist()) for _ in range(B)) if e > 0]
+    if not r:
+        return float(est), float(s), float(est)
+    lo, mid, hi = np.quantile(r, [alpha / 2, 0.5, 1 - alpha / 2])
+    return float(max(s, est * mid)), float(max(s, est * lo)), float(max(s, est * hi))

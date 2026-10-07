@@ -129,8 +129,14 @@ def run_job(dataset, model, seed, k_planted=30, budgets=(300, 1000, 3000), repea
                 for name, fn in E.ESTIMATORS.items():
                     row[name] = fn(cl)
                 row["chao1_lo"], row["chao1_hi"] = E.chao1_ci(cl)
-                for name in ("chao1", "ace", "jackknife1"):  # bootstrap intervals (iNEXT method)
-                    row[f"{name}_blo"], row[f"{name}_bhi"] = E.boot_ci(cl, E.ESTIMATORS[name], B=boot, seed=r)
+                for name in ("chao1", "ace", "jackknife1"):
+                    fn = E.ESTIMATORS[name]
+                    row[f"{name}_blo"], row[f"{name}_bhi"] = E.boot_ci(cl, fn, B=boot, seed=r)  # iNEXT method
+                    row[f"{name}_bc"], row[f"{name}_plo"], row[f"{name}_phi"] = E.pivot_ci(cl, fn, B=boot, seed=r)
+                # unseen mass: share of ALL pool errors (of this type definition) whose type was not seen in this test
+                pool_types = t[t >= 0]
+                row["unseen_true"] = float(np.isin(pool_types, list(seen), invert=True).mean()) if len(pool_types) else 0.0
+                row["unseen_est"] = 1 - row["coverage"]
                 rows.append(row)
     return rows
 

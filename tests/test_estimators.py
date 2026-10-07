@@ -54,5 +54,10 @@ lo2, hi2 = boot_ci([4, 5, 6], ace, B=50)
 check(lo2 == 3.0 and hi2 >= 3.0, "boot_ci with nothing missing: lower end is S_obs")
 
 check(boot_ci([1], chao1) == (1.0, 1.0) and boot_ci([], chao1) == (0.0, 0.0), "boot_ci with 0 or 1 error")
+# bias-calibrated bootstrap: ordered, never below S_obs, and corrects upward when singletons dominate
+from estimators import pivot_ci
+bc, plo, phi = pivot_ci(c, chao1, B=100, seed=2)
+check(9 - 1e-9 <= plo <= bc <= phi and bc >= chao1(c) - 1e-9, "pivot_ci ordering and upward correction")
+check(pivot_ci([3, 4, 5], ace, B=50)[1] == 3.0, "pivot_ci with nothing missing")
 
 print(f"ALL {ok} ESTIMATOR CHECKS PASSED")

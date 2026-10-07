@@ -19,6 +19,8 @@ with tempfile.TemporaryDirectory() as d:
     assert (df.chao1 >= df.s_obs - 1e-9).all() and (df.ichao1 >= df.chao1 - 1e-9).all(), "estimator ordering"
     assert (df.chao1_lo <= df.chao1 + 1e-9).all() and (df.chao1 <= df.chao1_hi + 1e-9).all(), "interval"
     assert df.new_real.ge(0).all() and df.new_pred.ge(0).all(), "new-type counts"
+    assert ((df.unseen_true >= 0) & (df.unseen_true <= 1) & (df.unseen_est >= -1e-9) & (df.unseen_est <= 1 + 1e-9)).all()
+    assert (df.chao1_plo <= df.chao1_bc + 1e-9).all() and (df.chao1_bc <= df.chao1_phi + 1e-9).all(), "pivot interval"
     assert set(df.flip) == {0.6, 0.9} and set(df.k_planted) == {10, 20}, "design sweep"
     for e in ("chao1", "ace", "jackknife1"):
         assert (df[f"{e}_blo"] >= df.s_obs - 1e-9).all() and (df[f"{e}_blo"] <= df[f"{e}_bhi"] + 1e-9).all(), e

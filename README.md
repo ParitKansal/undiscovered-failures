@@ -6,13 +6,13 @@ This repository tests whether those estimators work for model failures. The diff
 
 The same checks run on a second definition of a failure type, where the model's real errors are grouped by k-means at 10, 25 and 50 clusters. That version shows how much the answer depends on how finely failures are grouped.
 
-**Status:** exploratory pilot, not pre-registered. The first run (pilot v0) is recorded in `runs/`. Version 1 adds bootstrap intervals, a fourth dataset, two label-flip rates and three numbers of planted types.
+**Status:** exploratory pilot, not pre-registered. The first run (pilot v0) is recorded in `runs/`. Version 1 adds bootstrap intervals, a fourth dataset, two label-flip rates and three numbers of planted types. Version 2 adds a bias-calibrated bootstrap and a second target: the share of all errors that belong to failure types not yet seen, which can be estimated even when the total number of types cannot.
 
 ## What is in the repository
 
 | File | What it does |
 |---|---|
-| `estimators.py` | Chao1 with its log-normal 95% interval, iChao1, ACE, first-order jackknife, sample coverage, the prediction of new types, and bootstrap 95% intervals for any estimator |
+| `estimators.py` | Chao1 with its log-normal 95% interval, iChao1, ACE, first-order jackknife, sample coverage, the prediction of new types, bootstrap 95% intervals for any estimator, and a bias-calibrated bootstrap |
 | `experiment.py` | One job per dataset, model and seed: plant failures, train, find errors, simulate testing, write one CSV row per draw. Jobs run in parallel on all CPU cores. |
 | `summarize.py` | Tables of each estimator's bias, interval coverage and new-type prediction error |
 | `tests/` | Checks of the estimators against hand-computed values and a simulation, and an end-to-end run on a small synthetic dataset |
