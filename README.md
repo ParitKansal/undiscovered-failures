@@ -32,7 +32,7 @@ python experiment.py --datasets adult,bank,covertype,magic --models logreg,fores
 python summarize.py results/pilot.csv
 ```
 
-The datasets (Adult, Bank Marketing and Covertype) are downloaded automatically from OpenML and scikit-learn.
+The datasets (Adult, Bank Marketing, MAGIC Gamma Telescope and Covertype) are downloaded automatically from OpenML and scikit-learn.
 
 ## Related work
 
