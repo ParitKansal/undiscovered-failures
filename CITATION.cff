@@ -8,17 +8,22 @@ authors:
     website: "https://paritkansal.in"
 repository-code: "https://github.com/ParitKansal/undiscovered-failures"
 url: "https://github.com/ParitKansal/undiscovered-failures"
-date-released: 2026-10-07
-version: "0.1.0"
+date-released: 2026-10-16
+version: "1.0.0"
 license: MIT
 abstract: >-
-  Code for a pilot study that asks whether species-richness estimators from ecology (Chao1, iChao1, ACE,
-  jackknife) can estimate how many distinct failure types of a classical machine-learning model remain
-  undiscovered after testing. Failure types are planted in standard tabular datasets so the true number is
-  known, and the estimates are checked against that truth and against held-out test draws.
+  Tests whether species-richness estimators from ecology (Chao1, iChao1, ACE, jackknife, sample coverage) can tell
+  how many failure types of a classical machine-learning model remain undiscovered after testing. Planted failures
+  (flipped labels in rare subgroups) and natural failures (errors of a clean model grouped into types fixed in
+  advance) give the truth. In a pre-registered main study (5 tabular datasets, 3 model families, 450 jobs), the share
+  of errors from not-yet-seen failure types was estimated without bias in 95.6% of planted and 100% of natural cells,
+  with an honest 95% interval for natural failures (95.6% of cells) but not planted ones (71.1%). The number of
+  failure types could not be estimated reliably and is best reported as a lower bound.
 keywords:
   - machine learning testing
   - failure modes
   - species richness
   - Chao1
   - tabular data
+  - sample coverage
+  - pre-registration
