@@ -11,6 +11,7 @@ October 2026
 [![Status: pre-registered](https://img.shields.io/badge/status-pre--registered%20study-8a5cf6)](PREREG.md)
 [![Unseen share: SUPPORTED](https://img.shields.io/badge/unseen%20share-SUPPORTED-1baf7a)](RESULTS.md)
 [![Number of types: lower bound only](https://img.shields.io/badge/number%20of%20types-lower%20bound%20only-eda100)](RESULTS.md)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23412807.svg)](https://doi.org/10.5281/zenodo.23412807)
 [![Code: MIT](https://img.shields.io/badge/code-MIT-2a78d6)](LICENSE)
 [![Runs on Colab CPU](https://img.shields.io/badge/runs%20on-Google%20Colab%20CPU-52514e)](pilot_colab.ipynb)
 
@@ -92,6 +93,9 @@ If you use this work, please cite:
   title        = {How Many Failure Types Are Still Undiscovered? Species-Richness Estimators for Testing Machine-Learning Models},
   year         = {2026},
   month        = oct,
+  publisher    = {Zenodo},
+  doi          = {10.5281/zenodo.23412807},
+  url          = {https://doi.org/10.5281/zenodo.23412807},
   howpublished = {\url{https://github.com/ParitKansal/undiscovered-failures}},
   note         = {Pre-registered study. GitHub repository}
 }

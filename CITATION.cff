@@ -11,6 +11,14 @@ url: "https://github.com/ParitKansal/undiscovered-failures"
 date-released: 2026-10-16
 version: "1.0.0"
 license: MIT
+doi: "10.5281/zenodo.23412807"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.23412807"
+    description: "Concept DOI: all versions, resolves to the latest"
+  - type: doi
+    value: "10.5281/zenodo.23412808"
+    description: "Version 1.0.0"
 abstract: >-
   Tests whether species-richness estimators from ecology (Chao1, iChao1, ACE, jackknife, sample coverage) can tell
   how many failure types of a classical machine-learning model remain undiscovered after testing. Planted failures
